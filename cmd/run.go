@@ -28,7 +28,7 @@ var runCmd = &cli.Command{
 		// Try to get env from VIRTUAL_ENV if not specified
 		if envName == "" {
 			virtualEnv := os.Getenv("VIRTUAL_ENV")
-			if virtualEnv != "" && !filepath.IsAbs(virtualEnv) {
+			if virtualEnv != "" {
 				envName = filepath.Base(virtualEnv)
 			}
 		}

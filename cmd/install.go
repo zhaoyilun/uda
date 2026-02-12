@@ -35,7 +35,7 @@ var installCmd = &cli.Command{
 		// Try to get env from VIRTUAL_ENV if not specified
 		if envName == "" {
 			virtualEnv := os.Getenv("VIRTUAL_ENV")
-			if virtualEnv != "" && !filepath.IsAbs(virtualEnv) {
+			if virtualEnv != "" {
 				// VIRTUAL_ENV is a path, extract env name
 				envName = filepath.Base(virtualEnv)
 			}

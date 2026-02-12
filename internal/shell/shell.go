@@ -74,7 +74,9 @@ export PATH="$VIRTUAL_ENV/bin:$PATH"
 
 // GenerateDeactivateScript generates deactivation commands
 func GenerateDeactivateScript() string {
-	return `unset VIRTUAL_ENV
-export PATH="${PATH#*:$VIRTUAL_ENV/bin}"
+	return `if [ -n "$VIRTUAL_ENV" ]; then
+    export PATH="${PATH#*:$VIRTUAL_ENV/bin}"
+    unset VIRTUAL_ENV
+fi
 `
 }

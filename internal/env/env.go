@@ -3,9 +3,10 @@ package env
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"os/exec"
 
 	"github.com/uda/uda/internal/config"
+	"github.com/uda/uda/internal/uv"
 )
 
 func List() ([]string, error) {
@@ -34,14 +35,28 @@ func Create(name string, pythonVersion string) error {
 		return fmt.Errorf("failed to create env directory: %w", err)
 	}
 
+	// Get uv binary
+	uvPath, err := uv.FindUv()
+	if err != nil {
+		return err
+	}
+
 	// Create virtual environment using uv
 	args := []string{"venv", envPath}
 	if pythonVersion != "" {
 		args = append(args, "--python", pythonVersion)
 	}
 
-	// TODO: Call uv to create venv
-	_ = args
+	cmd := exec.Command(uvPath, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to create venv: %w", err)
+	}
+
+	fmt.Printf("Environment %s created successfully!\n", name)
 	return nil
 }
 

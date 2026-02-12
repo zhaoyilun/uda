@@ -8,10 +8,29 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/uda/uda/internal/config"
 	"github.com/uda/uda/internal/mirror"
 )
+
+// CopyFile copies a file from src to dst
+func CopyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
 
 func FindUv() (string, error) {
 	// Check local uv first
@@ -81,37 +100,110 @@ func installWithMirror(fallbackToOfficial bool) error {
 	uvURL := getUvDownloadURL(mirrorURL)
 	fmt.Printf("Downloading uv from %s...\n", uvURL)
 
-	// Download the file
-	resp, err := http.Get(uvURL)
-	if err != nil {
-		// Try fallback to official if mirror fails
-		if mirrorURL != "" && mirrorURL != "https://astral.sh" {
-			fmt.Println("Mirror failed, trying official source...")
-			return installWithMirror(true) // Retry with official
+	// Check if this is a tar.gz file
+	isTarGz := strings.HasSuffix(uvURL, ".tar.gz")
+
+	if isTarGz {
+		// Download tar.gz and extract
+		tmpDir, err := os.MkdirTemp("", "uv-install")
+		if err != nil {
+			return fmt.Errorf("failed to create temp dir: %w", err)
 		}
-		return fmt.Errorf("failed to download uv: %w", err)
-	}
-	defer resp.Body.Close()
+		defer os.RemoveAll(tmpDir)
 
-	if resp.StatusCode != 200 {
-		// Try fallback to official if mirror fails
-		if mirrorURL != "" && mirrorURL != "https://astral.sh" {
-			fmt.Println("Mirror failed, trying official source...")
-			return installWithMirror(true) // Retry with official
+		tarPath := filepath.Join(tmpDir, "uv.tar.gz")
+		out, err := os.Create(tarPath)
+		if err != nil {
+			return fmt.Errorf("failed to create tar file: %w", err)
 		}
-		return fmt.Errorf("failed to download uv: %s", resp.Status)
-	}
 
-	// Create destination file
-	out, err := os.Create(uvPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+		resp, err := http.Get(uvURL)
+		if err != nil {
+			out.Close()
+			if mirrorURL != "" && mirrorURL != "https://astral.sh" {
+				fmt.Println("Mirror failed, trying official source...")
+				return installWithMirror(true)
+			}
+			return fmt.Errorf("failed to download uv: %w", err)
+		}
+		defer resp.Body.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+		if resp.StatusCode != 200 {
+			out.Close()
+			if mirrorURL != "" && mirrorURL != "https://astral.sh" {
+				fmt.Println("Mirror failed, trying official source...")
+				return installWithMirror(true)
+			}
+			return fmt.Errorf("failed to download uv: %s", resp.Status)
+		}
+
+		_, err = io.Copy(out, resp.Body)
+		out.Close()
+		if err != nil {
+			return fmt.Errorf("failed to save tar file: %w", err)
+		}
+
+		// Extract tar.gz
+		cmd := exec.Command("tar", "-xzf", tarPath, "-C", tmpDir)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to extract tar file: %w", err)
+		}
+
+		// Find and move the uv binary
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil {
+			return fmt.Errorf("failed to read temp dir: %w", err)
+		}
+
+		found := false
+		for _, entry := range entries {
+			if entry.IsDir() {
+				subDir := filepath.Join(tmpDir, entry.Name())
+				uvBinary := filepath.Join(subDir, "uv")
+				if _, err := os.Stat(uvBinary); err == nil {
+					if err := CopyFile(uvBinary, uvPath); err != nil {
+						return fmt.Errorf("failed to copy uv binary: %w", err)
+					}
+					found = true
+					break
+				}
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("uv binary not found in tarball")
+		}
+	} else {
+		// Download single binary
+		resp, err := http.Get(uvURL)
+		if err != nil {
+			if mirrorURL != "" && mirrorURL != "https://astral.sh" {
+				fmt.Println("Mirror failed, trying official source...")
+				return installWithMirror(true)
+			}
+			return fmt.Errorf("failed to download uv: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			if mirrorURL != "" && mirrorURL != "https://astral.sh" {
+				fmt.Println("Mirror failed, trying official source...")
+				return installWithMirror(true)
+			}
+			return fmt.Errorf("failed to download uv: %s", resp.Status)
+		}
+
+		// Create destination file
+		out, err := os.Create(uvPath)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Make executable
@@ -123,9 +215,28 @@ func installWithMirror(fallbackToOfficial bool) error {
 	return nil
 }
 
+// mapGoArchToUVArch maps Go architecture names to UV download architecture names
+func mapGoArchToUVArch(goArch string) string {
+	switch goArch {
+	case "amd64":
+		return "x86_64"
+	case "arm64":
+		return "aarch64"
+	default:
+		return goArch
+	}
+}
+
 func getUvDownloadURL(mirrorURL string) string {
-	arch := runtime.GOARCH
+	arch := mapGoArchToUVArch(runtime.GOARCH)
 	os := runtime.GOOS
+
+	// UV now uses tar.gz format for Linux
+	if os == "linux" {
+		return fmt.Sprintf("https://github.com/astral-sh/uv/releases/latest/download/uv-%s-unknown-linux-gnu.tar.gz", arch)
+	}
+
+	// Windows uses .exe
 	ext := ""
 	if os == "windows" {
 		ext = ".exe"
@@ -137,7 +248,7 @@ func getUvDownloadURL(mirrorURL string) string {
 		return fmt.Sprintf("%s/uv/releases/latest/download/uv-%s-%s%s", mirrorURL, os, arch, ext)
 	}
 
-	// Official URL
+	// Official URL for other platforms
 	return fmt.Sprintf("https://github.com/astral-sh/uv/releases/latest/download/uv-%s-%s%s", os, arch, ext)
 }
 

@@ -3,58 +3,82 @@ package shell
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/uda/uda/internal/config"
 )
 
-func Init(shellType string) string {
+func Init(shellType string, binaryPath string) string {
 	switch shellType {
 	case "bash":
-		return bashInit()
+		return bashInit(binaryPath)
 	case "zsh":
-		return zshInit()
+		return zshInit(binaryPath)
 	case "fish":
-		return fishInit()
+		return fishInit(binaryPath)
 	default:
-		return bashInit()
+		return bashInit(binaryPath)
 	}
 }
 
-func bashInit() string {
-	return `uda() {
+func bashInit(binaryPath string) string {
+	quotedPath := strconv.Quote(binaryPath)
+	return fmt.Sprintf(`_UDA_BIN=%s
+uda() {
+    if [ $# -eq 0 ]; then
+        "$_UDA_BIN"
+        return
+    fi
+
     local cmd="$1"
     shift
+
     case "$cmd" in
         activate)
-            eval "$(command uda activate "$@")"
+            eval "$("$_UDA_BIN" activate "$@")"
             ;;
         deactivate)
-            eval "$(command uda deactivate)"
+            eval "$("$_UDA_BIN" deactivate)"
             ;;
         *)
-            command uda "$cmd" "$@"
+            "$_UDA_BIN" "$cmd" "$@"
             ;;
     esac
 }
 
 # Alias for conda compatibility
 alias conda=uda
-`
+`, quotedPath)
 }
 
-func zshInit() string {
-	return bashInit()
+func zshInit(binaryPath string) string {
+	return bashInit(binaryPath)
 }
 
-func fishInit() string {
-	return `# UDA fish functions
+func fishInit(binaryPath string) string {
+	quotedPath := strconv.Quote(binaryPath)
+	return fmt.Sprintf(`# UDA fish functions
+set -l _UDA_BIN %s
 function uda
-    set cmd (command uda $argv)
-    eval $cmd
+    if test (count $argv) -eq 0
+        eval "$_UDA_BIN"
+        return
+    end
+
+    set cmd $argv[1]
+    set argv $argv[2..-1]
+    switch $cmd
+        case activate
+            eval "$_UDA_BIN activate $argv"
+        case deactivate
+            eval "$_UDA_BIN deactivate"
+        case '*'
+            $_UDA_BIN $cmd $argv
+    end
 end
 
 alias conda uda
-`
+`, quotedPath)
 }
 
 // GenerateActivateScript generates activation commands for a specific environment

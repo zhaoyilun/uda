@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/urfave/cli/v3"
 	"github.com/uda/uda/internal/shell"
+	"github.com/urfave/cli/v3"
 )
 
 var initCmd = &cli.Command{
@@ -36,7 +36,17 @@ var initCmd = &cli.Command{
 			shellType = "bash"
 		}
 
-		fmt.Print(shell.Init(shellType))
+		executable, err := os.Executable()
+		if err != nil {
+			return err
+		}
+
+		executable, err = filepath.EvalSymlinks(executable)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print(shell.Init(shellType, executable))
 		return nil
 	},
 }

@@ -9,7 +9,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/uda.git
+git clone https://github.com/zhaoyilun/uda.git
 cd uda
 
 # 构建
@@ -25,10 +25,10 @@ go build -ldflags="-s -w" -o uda .
 
 ```bash
 # 方法 1: 使用安装脚本
-curl -sSf https://raw.githubusercontent.com/your-username/uda/main/install.sh | sh
+curl -sSf https://raw.githubusercontent.com/zhaoyilun/uda/main/install.sh | sh
 
 # 方法 2: 直接下载二进制
-curl -fsSL https://github.com/your-username/uda/releases/latest/download/uda-linux-x86_64 -o ~/.local/bin/uda
+curl -fsSL https://github.com/zhaoyilun/uda/releases/latest/download/uda -o ~/.local/bin/uda
 chmod +x ~/.local/bin/uda
 ```
 
@@ -36,7 +36,7 @@ chmod +x ~/.local/bin/uda
 
 ```powershell
 # 使用 PowerShell
-irm https://github.com/your-username/uda/releases/latest/download/uda-windows-x86_64.exe -o $env:LOCALAPPDATA\uda\uda.exe
+irm https://github.com/zhaoyilun/uda/releases/latest/download/uda.exe -o $env:LOCALAPPDATA\uda\uda.exe
 ```
 
 ## 安装后配置
@@ -57,6 +57,15 @@ uda create myenv --python 3.11
 # 激活环境
 uda activate myenv
 ```
+
+## 国内环境下下载 Go 依赖（可选）
+
+```bash
+export GOPROXY=https://goproxy.cn,direct
+export GOSUMDB=sum.golang.google.cn
+```
+
+然后重新执行 `./scripts/build.sh` 或 `go test ./...`。
 
 ## 使用镜像安装
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # UDA 一键安装脚本
-# 使用方法: curl -sSf https://raw.githubusercontent.com/your-repo/main/install.sh | sh
+# 使用方法: curl -sSf https://raw.githubusercontent.com/zhaoyilun/uda/main/install.sh | sh
 # 或: sh install.sh
 #
 
@@ -9,7 +9,7 @@ set -e
 
 # 配置
 UDA_VERSION="0.1.0"
-UDA_REPO="https://github.com/your-username/uda"
+UDA_REPO="https://github.com/zhaoyilun/uda"
 INSTALL_DIR="${HOME}/.local/bin"
 UDA_DIR="${HOME}/.uda"
 
@@ -94,7 +94,12 @@ main() {
         ext=".exe"
     fi
 
-    local uda_url="${UDA_REPO}/releases/latest/download/uda-${OS}-${ARCH}${ext}"
+    local shell_name="$(basename "${SHELL}")"
+    if [ -z "$shell_name" ]; then
+        shell_name="bash"
+    fi
+
+    local uda_url="${UDA_REPO}/releases/latest/download/uda${ext}"
     local uda_path="${INSTALL_DIR}/uda${ext}"
 
     # 尝试下载，如果失败则提示用户手动构建
@@ -102,7 +107,7 @@ main() {
         chmod +x "$uda_path"
     else
         log_warn "无法从 GitHub 下载预编译版本"
-        log_info "请从源码构建: https://github.com/your-username/uda#构建"
+        log_info "请从源码构建: https://github.com/zhaoyilun/uda#构建"
         exit 1
     fi
 
@@ -117,7 +122,7 @@ main() {
     echo "请将以下内容添加到你的 shell 配置文件 (~/.bashrc, ~/.zshrc 等):"
     echo ""
     echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
-    echo "  eval \"\$(uda init \$SHELL_NAME)\""
+    echo "  eval \"\$(uda init ${shell_name})\""
     echo ""
     echo "然后重新加载配置:"
     echo "  source ~/.bashrc  # 或 source ~/.zshrc"

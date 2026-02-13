@@ -39,11 +39,25 @@ _uda_set_prompt() {
 
 _uda_remove_path_entry() {
     local entry="$1"
-    local p=":$PATH:"
-    p="${p//:$entry:/}"
-    p="${p#:}"
-    p="${p%%:}"
-    PATH="$p"
+    if [ -z "$entry" ]; then
+        return
+    fi
+
+    local new_path=""
+    local old_ifs="$IFS"
+    local part
+    IFS=":"
+    for part in $PATH; do
+        if [ "$part" != "$entry" ]; then
+            if [ -z "$new_path" ]; then
+                new_path="$part"
+            else
+                new_path="${new_path}:$part"
+            fi
+        fi
+    done
+    IFS="$old_ifs"
+    PATH="$new_path"
 }
 
 if [ -z "$_UDA_BASE_PS1" ]; then
@@ -105,6 +119,7 @@ func fishInit(binaryPath string) string {
 	quotedPath := strconv.Quote(binaryPath)
 	return fmt.Sprintf(`# UDA fish functions
 set -l _UDA_BIN %s
+
 function uda
     if test (count $argv) -eq 0
         eval "$_UDA_BIN"
@@ -118,6 +133,26 @@ function uda
             eval "$_UDA_BIN activate $argv"
         case deactivate
             eval "$_UDA_BIN deactivate"
+        case pip
+            if test (count $argv) -gt 0
+                if test $argv[1] = install
+                    $_UDA_BIN install $argv
+                else
+                    command pip $argv
+                end
+            else
+                command pip
+            end
+        case pip3
+            if test (count $argv) -gt 0
+                if test $argv[1] = install
+                    $_UDA_BIN install $argv
+                else
+                    command pip3 $argv
+                end
+            else
+                command pip3
+            end
         case '*'
             $_UDA_BIN $cmd $argv
     end
@@ -135,7 +170,7 @@ func GenerateActivateScript(envName string) (string, error) {
 		return "", fmt.Errorf("environment %s does not exist", envName)
 	}
 
-	script := fmt.Sprintf(`if command -v _uda_remove_path_entry >/dev/null 2>&1; then
+	script := fmt.Sprintf(`if [ -n "$VIRTUAL_ENV" ] && command -v _uda_remove_path_entry >/dev/null 2>&1; then
     _uda_remove_path_entry "$VIRTUAL_ENV/bin"
 fi
 

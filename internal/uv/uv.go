@@ -230,10 +230,14 @@ func mapGoArchToUVArch(goArch string) string {
 func getUvDownloadURL(mirrorURL string) string {
 	arch := mapGoArchToUVArch(runtime.GOARCH)
 	os := runtime.GOOS
+	packageFileLinux := fmt.Sprintf("uv-%s-unknown-linux-gnu.tar.gz", arch)
 
 	// UV now uses tar.gz format for Linux
 	if os == "linux" {
-		return fmt.Sprintf("https://github.com/astral-sh/uv/releases/latest/download/uv-%s-unknown-linux-gnu.tar.gz", arch)
+		if mirrorURL != "" && mirrorURL != "https://astral.sh" {
+			return fmt.Sprintf("%s/uv/releases/latest/download/%s", strings.TrimSuffix(mirrorURL, "/"), packageFileLinux)
+		}
+		return fmt.Sprintf("https://github.com/astral-sh/uv/releases/latest/download/%s", packageFileLinux)
 	}
 
 	// Windows uses .exe

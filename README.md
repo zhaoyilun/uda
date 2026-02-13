@@ -23,9 +23,12 @@ cd uda
 # 初始化 shell
 eval "$(./uda init bash)"
 
+# 注意：init 后 shell 前缀会显示当前环境名（base / env-name）
+
 # 创建并激活环境
 uda create myenv --python 3.11
 uda activate myenv
+python --version  # 切换到该环境的 Python
 ```
 
 ## 安装与配置
@@ -50,7 +53,8 @@ uda list                             # 列出环境
 uda remove <name>                    # 删除环境
 uda activate <name>                  # 激活环境（输出 shell 片段）
 uda deactivate                       # 退出环境
-uda install --env <name> pkg1 pkg2   # 安装依赖
+uda install pkg1 pkg2                # 安装到当前激活环境（或用 --env 指定）
+# 也可直接运行：pip install pkg1 pkg2（在已激活环境下自动接管）
 uda run --env <name> <command>       # 在指定环境执行命令
 uda run <command>                   # 未指定 env 时使用当前环境
 uda self install                     # 安装/更新 uv

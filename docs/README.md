@@ -29,6 +29,7 @@ The tool intentionally avoids hidden state outside `~/.uda` and writes minimal s
 | `activate <name>` | Emit `export VIRTUAL_ENV=...` and PATH adjustment commands. |
 | `deactivate` | Emit shell cleanup commands for `VIRTUAL_ENV` and PATH. |
 | `install` | Run `uv pip install` in selected environment with optional `-r` file. |
+| `pip install ...` | Proxied to `uda install` when an environment is active (bash/zsh/fish init). |
 | `run` | Run arbitrary command via uv with selected environment python. |
 | `self install` | Download and install uv to `~/.uda/uv`, with mirror fallback. |
 | `init [bash|zsh|fish]` | Output shell init function/alias script. |
@@ -65,6 +66,8 @@ go test ./...
 eval "$(./uda init bash)"
 uda create testenv --python 3.11
 uda activate testenv
+python --version
+deactivate
 ```
 
 ## 6. Release Notes & Compatibility
